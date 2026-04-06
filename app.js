@@ -41,7 +41,13 @@ const LANG = {
   }
 };
 
-const TOTAL_TAGS = 16;
+const TOTAL_TAGS = 20;
+const TAG_NAMES = [
+  "Simone", "Luis", "Viviane", "Lívia", "Silvia",
+  "Fernanda", "Rodrigo", "Juliana", "Aurora", "Andrea",
+  "Lars", "Antonio", "Helena", "Laura", "Alice",
+  "Marcelo", "Wallace", "Joana", "Reserva 1", "Reserva 2"
+];
 const storageKey = id => `luggage_tag_${id}`;
 
 function loadTag(id) {
@@ -186,7 +192,7 @@ function AdminPanel({ lang, base }) {
         const id = i + 1;
         const url = `${base}?tag=${id}`;
         return React.createElement("div", { key: id, className: "border rounded-xl p-3 flex flex-col items-center gap-2 bg-white shadow-sm" },
-          React.createElement("p", { className: "text-xs font-bold text-gray-500" }, `${t.tagId} ${id}`),
+                        React.createElement("p", { className: "text-xs font-bold text-gray-500" }, displayName),
           React.createElement(QRImg, { value: url, size: 100 }),
           React.createElement("p", { className: "text-xs text-gray-400 text-center break-all" }, url)
         );

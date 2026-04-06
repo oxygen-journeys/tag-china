@@ -48,6 +48,7 @@ const TAG_NAMES = [
   "Lars", "Antonio", "Helena", "Laura", "Alice",
   "Marcelo", "Wallace", "Joana", "Reserva 1", "Reserva 2"
 ];
+
 const storageKey = id => `luggage_tag_${id}`;
 
 function loadTag(id) {
@@ -58,15 +59,19 @@ function saveTag(id, data) {
   localStorage.setItem(storageKey(id), JSON.stringify(data));
 }
 
-const QRImg = ({ value, size = 120 }) => (
+const QRImg = ({ value, size = 120 }) =>
   React.createElement("img", {
     src: `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`,
     alt: "QR Code", width: size, height: size
-  })
-);
+  });
 
-function inp(extra = "") {
-  return `w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400 ${extra}`;
+const inpClass = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400";
+
+function Field({ label, value, onChange, type = "text", maxLength }) {
+  return React.createElement("input", {
+    className: inpClass, placeholder: label, value, type,
+    maxLength, onChange: e => onChange(e.target.value)
+  });
 }
 
 function PublicView({ tag, lang, onOwnerClick }) {
@@ -90,23 +95,23 @@ function PublicView({ tag, lang, onOwnerClick }) {
   );
 }
 
-function Field({ label, value, onChange }) {
-  return React.createElement("input", { className: inp(), placeholder: label, value, onChange: e => onChange(e.target.value) });
-}
-
 function RegisterView({ tagId, lang, onSaved, onBack }) {
   const t = LANG[lang];
   const [f, setF] = useState({ name: "", email: "", phone: "", destination: "", pin: "", confirmPin: "" });
-  const [err, setErr] = useState(""); const [ok, setOk] = useState(false);
+  const [err, setErr] = useState("");
+  const [ok, setOk] = useState(false);
   const set = k => v => setF(p => ({ ...p, [k]: v }));
+
   function submit() {
     setErr("");
     if (!f.name || !f.email || !f.phone || !f.destination || !f.pin) return setErr(t.fillAll);
     if (f.pin.length !== 4) return setErr(t.pinLength);
     if (f.pin !== f.confirmPin) return setErr(t.pinMismatch);
     saveTag(tagId, { name: f.name, email: f.email, phone: f.phone, destination: f.destination, pin: f.pin });
-    setOk(true); setTimeout(onSaved, 1200);
+    setOk(true);
+    setTimeout(onSaved, 1200);
   }
+
   return React.createElement("div", null,
     React.createElement("button", { onClick: onBack, className: "text-sm text-gray-400 mb-3" }, "← " + t.back),
     React.createElement("p", { className: "font-semibold text-gray-700 mb-3" }, t.firstAccess),
@@ -115,8 +120,8 @@ function RegisterView({ tagId, lang, onSaved, onBack }) {
       React.createElement(Field, { label: t.email, value: f.email, onChange: set("email") }),
       React.createElement(Field, { label: t.phone, value: f.phone, onChange: set("phone") }),
       React.createElement(Field, { label: t.destination, value: f.destination, onChange: set("destination") }),
-      React.createElement("input", { className: inp(), placeholder: t.pin, maxLength: 4, type: "password", value: f.pin, onChange: e => set("pin")(e.target.value) }),
-      React.createElement("input", { className: inp(), placeholder: t.confirmPin, maxLength: 4, type: "password", value: f.confirmPin, onChange: e => set("confirmPin")(e.target.value) }),
+      React.createElement(Field, { label: t.pin, value: f.pin, onChange: set("pin"), type: "password", maxLength: 4 }),
+      React.createElement(Field, { label: t.confirmPin, value: f.confirmPin, onChange: set("confirmPin"), type: "password", maxLength: 4 }),
       React.createElement("p", { className: "text-xs text-gray-400" }, t.pinInfo),
     ),
     err && React.createElement("p", { className: "text-red-500 text-sm mt-2" }, err),
@@ -127,7 +132,10 @@ function RegisterView({ tagId, lang, onSaved, onBack }) {
 
 function LoginView({ tagId, lang, onLoggedIn, onBack, onRegister }) {
   const t = LANG[lang];
-  const [email, setEmail] = useState(""); const [pin, setPin] = useState(""); const [err, setErr] = useState("");
+  const [email, setEmail] = useState("");
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState("");
+
   function submit() {
     setErr("");
     const tag = loadTag(tagId);
@@ -136,12 +144,13 @@ function LoginView({ tagId, lang, onLoggedIn, onBack, onRegister }) {
     if (tag.pin !== pin) return setErr(t.wrongPin);
     onLoggedIn(tag);
   }
+
   return React.createElement("div", null,
     React.createElement("button", { onClick: onBack, className: "text-sm text-gray-400 mb-3" }, "← " + t.back),
     React.createElement("p", { className: "font-semibold text-gray-700 mb-3" }, t.login),
     React.createElement("div", { className: "space-y-2" },
-      React.createElement("input", { className: inp(), placeholder: t.email, value: email, onChange: e => setEmail(e.target.value) }),
-      React.createElement("input", { className: inp(), placeholder: t.pin, maxLength: 4, type: "password", value: pin, onChange: e => setPin(e.target.value) }),
+      React.createElement(Field, { label: t.email, value: email, onChange: setEmail }),
+      React.createElement(Field, { label: t.pin, value: pin, onChange: setPin, type: "password", maxLength: 4 }),
     ),
     err && React.createElement("p", { className: "text-red-500 text-sm mt-2" }, err),
     React.createElement("button", { onClick: submit, className: "w-full mt-4 bg-red-600 text-white rounded-lg py-2 font-semibold" }, t.loginBtn),
@@ -154,10 +163,13 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
   const [f, setF] = useState({ name: tag.name, email: tag.email, phone: tag.phone, destination: tag.destination });
   const [ok, setOk] = useState(false);
   const set = k => v => setF(p => ({ ...p, [k]: v }));
+
   function submit() {
     saveTag(tagId, { ...f, pin: tag.pin });
-    setOk(true); setTimeout(() => onSaved({ ...f, pin: tag.pin }), 1000);
+    setOk(true);
+    setTimeout(() => onSaved({ ...f, pin: tag.pin }), 1000);
   }
+
   return React.createElement("div", null,
     React.createElement("p", { className: "font-semibold text-gray-700 mb-3" }, t.editData),
     React.createElement("div", { className: "space-y-2" },
@@ -175,12 +187,11 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
 function TagSimulator({ tagId, lang }) {
   const [view, setView] = useState("public");
   const [tagData, setTagData] = useState(() => loadTag(tagId));
-  return (() => {
-    if (view === "public") return React.createElement(PublicView, { tag: tagData, lang, onOwnerClick: () => setView(tagData ? "login" : "register") });
-    if (view === "register") return React.createElement(RegisterView, { tagId, lang, onBack: () => setView("public"), onSaved: () => { setTagData(loadTag(tagId)); setView("public"); } });
-    if (view === "login") return React.createElement(LoginView, { tagId, lang, onBack: () => setView("public"), onRegister: () => setView("register"), onLoggedIn: d => { setTagData(d); setView("edit"); } });
-    if (view === "edit") return React.createElement(EditView, { tagId, lang, tag: tagData, onLogout: () => setView("public"), onSaved: d => { setTagData(d); setView("public"); } });
-  })();
+
+  if (view === "public") return React.createElement(PublicView, { tag: tagData, lang, onOwnerClick: () => setView(tagData ? "login" : "register") });
+  if (view === "register") return React.createElement(RegisterView, { tagId, lang, onBack: () => setView("public"), onSaved: () => { setTagData(loadTag(tagId)); setView("public"); } });
+  if (view === "login") return React.createElement(LoginView, { tagId, lang, onBack: () => setView("public"), onRegister: () => setView("register"), onLoggedIn: d => { setTagData(d); setView("edit"); } });
+  if (view === "edit") return React.createElement(EditView, { tagId, lang, tag: tagData, onLogout: () => setView("public"), onSaved: d => { setTagData(d); setView("public"); } });
 }
 
 function AdminPanel({ lang, base }) {
@@ -191,8 +202,10 @@ function AdminPanel({ lang, base }) {
       ...Array.from({ length: TOTAL_TAGS }, (_, i) => {
         const id = i + 1;
         const url = `${base}?tag=${id}`;
+        const saved = loadTag(id);
+        const displayName = saved ? saved.name.split(" ")[0] : TAG_NAMES[i];
         return React.createElement("div", { key: id, className: "border rounded-xl p-3 flex flex-col items-center gap-2 bg-white shadow-sm" },
-                        React.createElement("p", { className: "text-xs font-bold text-gray-500" }, displayName),
+          React.createElement("p", { className: "text-xs font-bold text-gray-700" }, displayName),
           React.createElement(QRImg, { value: url, size: 100 }),
           React.createElement("p", { className: "text-xs text-gray-400 text-center break-all" }, url)
         );
@@ -216,7 +229,7 @@ function App() {
       React.createElement("div", { className: "flex items-center justify-between mb-4" },
         React.createElement("div", null,
           React.createElement("h1", { className: "text-xl font-bold text-gray-800" }, "🏷️ " + t.title),
-          tagId && React.createElement("p", { className: "text-xs text-gray-400" }, `${t.tagId} #${tagId}`)
+          tagId && React.createElement("p", { className: "text-xs text-gray-400" }, TAG_NAMES[tagId - 1])
         ),
         React.createElement("div", { className: "flex gap-1" },
           ["pt", "en"].map(l => React.createElement("button", {
@@ -232,8 +245,9 @@ function App() {
         }, v === "admin" ? t.adminPanel : `${t.tagId} (demo)`))
       ),
       React.createElement("div", { className: "bg-white rounded-2xl shadow p-5" },
-        view === "admin" && !tagId ? React.createElement(AdminPanel, { lang, base }) :
-        React.createElement(TagSimulator, { tagId: tagId || 1, lang })
+        view === "admin" && !tagId
+          ? React.createElement(AdminPanel, { lang, base })
+          : React.createElement(TagSimulator, { tagId: tagId || 1, lang })
       ),
       React.createElement("p", { className: "text-center text-xs text-gray-300 mt-4" }, "Oxygen Hub · Smart Luggage Tag")
     )

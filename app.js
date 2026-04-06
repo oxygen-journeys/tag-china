@@ -1,4 +1,8 @@
-const { useState, useEffect } = React;
+const { useState } = React;
+
+const COLOR = "#47482b";
+const COLOR_DARK = "#33341f";
+const COLOR_LIGHT = "#c49d57";
 
 const LANG = {
   pt: {
@@ -61,37 +65,57 @@ function saveTag(id, data) {
 
 const QRImg = ({ value, size = 120 }) =>
   React.createElement("img", {
-    src: `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}`,
+    src: `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}&color=47482b`,
     alt: "QR Code", width: size, height: size
   });
 
-const inpClass = "w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-400";
+const inpStyle = {
+  width: "100%", border: "1px solid #d1d5db", borderRadius: "8px",
+  padding: "8px 12px", fontSize: "14px", outline: "none", boxSizing: "border-box"
+};
 
 function Field({ label, value, onChange, type = "text", maxLength }) {
   return React.createElement("input", {
-    className: inpClass, placeholder: label, value, type,
+    style: inpStyle, placeholder: label, value, type,
     maxLength, onChange: e => onChange(e.target.value)
   });
 }
 
+const btnPrimary = {
+  width: "100%", marginTop: "16px", backgroundColor: COLOR,
+  color: "white", borderRadius: "8px", padding: "10px", fontWeight: "600",
+  border: "none", cursor: "pointer", fontSize: "14px"
+};
+const btnSecondary = {
+  width: "100%", marginTop: "8px", background: "none",
+  border: "none", cursor: "pointer", fontSize: "13px",
+  color: "#6b7280", textDecoration: "underline"
+};
+
 function PublicView({ tag, lang, onOwnerClick }) {
   const t = LANG[lang];
-  if (!tag) return React.createElement("div", { className: "text-center py-10 text-gray-500" },
-    React.createElement("p", { className: "text-4xl mb-3" }, "🏷️"),
+  if (!tag) return React.createElement("div", { style: { textAlign: "center", padding: "40px 0", color: "#6b7280" } },
+    React.createElement("p", { style: { fontSize: "40px", marginBottom: "12px" } }, "🏷️"),
     React.createElement("p", null, t.notRegistered),
-    React.createElement("button", { onClick: onOwnerClick, className: "mt-4 text-sm underline text-blue-600" }, t.firstAccess)
+    React.createElement("button", { onClick: onOwnerClick, style: { ...btnSecondary, color: COLOR, marginTop: "16px" } }, t.firstAccess)
   );
   return React.createElement("div", null,
-    React.createElement("div", { className: "bg-gradient-to-br from-red-600 to-red-800 rounded-2xl p-5 text-white mb-4 shadow" },
-      React.createElement("p", { className: "text-xs uppercase tracking-widest opacity-70 mb-1" }, t.foundBag),
-      React.createElement("p", { className: "text-2xl font-bold mb-3" }, tag.name),
-      React.createElement("div", { className: "space-y-1 text-sm" },
+    React.createElement("div", {
+      style: {
+        background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`,
+        borderRadius: "16px", padding: "20px", color: "white", marginBottom: "16px",
+        boxShadow: "0 4px 12px rgba(71,72,43,0.3)"
+      }
+    },
+      React.createElement("p", { style: { fontSize: "11px", textTransform: "uppercase", letterSpacing: "2px", opacity: 0.7, marginBottom: "4px" } }, t.foundBag),
+      React.createElement("p", { style: { fontSize: "22px", fontWeight: "700", marginBottom: "12px" } }, tag.name),
+      React.createElement("div", { style: { fontSize: "13px", lineHeight: "1.8" } },
         React.createElement("p", null, "📧 " + tag.email),
         React.createElement("p", null, "📱 " + tag.phone),
         React.createElement("p", null, "🏠 " + tag.destination),
       )
     ),
-    React.createElement("button", { onClick: onOwnerClick, className: "w-full text-center text-sm text-gray-500 underline" }, t.ownerArea)
+    React.createElement("button", { onClick: onOwnerClick, style: btnSecondary }, t.ownerArea)
   );
 }
 
@@ -113,20 +137,20 @@ function RegisterView({ tagId, lang, onSaved, onBack }) {
   }
 
   return React.createElement("div", null,
-    React.createElement("button", { onClick: onBack, className: "text-sm text-gray-400 mb-3" }, "← " + t.back),
-    React.createElement("p", { className: "font-semibold text-gray-700 mb-3" }, t.firstAccess),
-    React.createElement("div", { className: "space-y-2" },
+    React.createElement("button", { onClick: onBack, style: { ...btnSecondary, textAlign: "left", width: "auto", marginTop: 0, marginBottom: "12px" } }, "← " + t.back),
+    React.createElement("p", { style: { fontWeight: "600", color: "#374151", marginBottom: "12px" } }, t.firstAccess),
+    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } },
       React.createElement(Field, { label: t.name, value: f.name, onChange: set("name") }),
       React.createElement(Field, { label: t.email, value: f.email, onChange: set("email") }),
       React.createElement(Field, { label: t.phone, value: f.phone, onChange: set("phone") }),
       React.createElement(Field, { label: t.destination, value: f.destination, onChange: set("destination") }),
       React.createElement(Field, { label: t.pin, value: f.pin, onChange: set("pin"), type: "password", maxLength: 4 }),
       React.createElement(Field, { label: t.confirmPin, value: f.confirmPin, onChange: set("confirmPin"), type: "password", maxLength: 4 }),
-      React.createElement("p", { className: "text-xs text-gray-400" }, t.pinInfo),
+      React.createElement("p", { style: { fontSize: "11px", color: "#9ca3af" } }, t.pinInfo),
     ),
-    err && React.createElement("p", { className: "text-red-500 text-sm mt-2" }, err),
-    ok && React.createElement("p", { className: "text-green-600 text-sm mt-2" }, "✅ " + t.savedSuccess),
-    React.createElement("button", { onClick: submit, className: "w-full mt-4 bg-red-600 text-white rounded-lg py-2 font-semibold" }, t.register)
+    err && React.createElement("p", { style: { color: "#ef4444", fontSize: "13px", marginTop: "8px" } }, err),
+    ok && React.createElement("p", { style: { color: "#22c55e", fontSize: "13px", marginTop: "8px" } }, "✅ " + t.savedSuccess),
+    React.createElement("button", { onClick: submit, style: btnPrimary }, t.register)
   );
 }
 
@@ -146,15 +170,15 @@ function LoginView({ tagId, lang, onLoggedIn, onBack, onRegister }) {
   }
 
   return React.createElement("div", null,
-    React.createElement("button", { onClick: onBack, className: "text-sm text-gray-400 mb-3" }, "← " + t.back),
-    React.createElement("p", { className: "font-semibold text-gray-700 mb-3" }, t.login),
-    React.createElement("div", { className: "space-y-2" },
+    React.createElement("button", { onClick: onBack, style: { ...btnSecondary, textAlign: "left", width: "auto", marginTop: 0, marginBottom: "12px" } }, "← " + t.back),
+    React.createElement("p", { style: { fontWeight: "600", color: "#374151", marginBottom: "12px" } }, t.login),
+    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } },
       React.createElement(Field, { label: t.email, value: email, onChange: setEmail }),
       React.createElement(Field, { label: t.pin, value: pin, onChange: setPin, type: "password", maxLength: 4 }),
     ),
-    err && React.createElement("p", { className: "text-red-500 text-sm mt-2" }, err),
-    React.createElement("button", { onClick: submit, className: "w-full mt-4 bg-red-600 text-white rounded-lg py-2 font-semibold" }, t.loginBtn),
-    React.createElement("button", { onClick: onRegister, className: "w-full mt-2 text-sm text-gray-500 underline" }, t.firstAccess)
+    err && React.createElement("p", { style: { color: "#ef4444", fontSize: "13px", marginTop: "8px" } }, err),
+    React.createElement("button", { onClick: submit, style: btnPrimary }, t.loginBtn),
+    React.createElement("button", { onClick: onRegister, style: btnSecondary }, t.firstAccess)
   );
 }
 
@@ -171,16 +195,16 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
   }
 
   return React.createElement("div", null,
-    React.createElement("p", { className: "font-semibold text-gray-700 mb-3" }, t.editData),
-    React.createElement("div", { className: "space-y-2" },
+    React.createElement("p", { style: { fontWeight: "600", color: "#374151", marginBottom: "12px" } }, t.editData),
+    React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "8px" } },
       React.createElement(Field, { label: t.name, value: f.name, onChange: set("name") }),
       React.createElement(Field, { label: t.email, value: f.email, onChange: set("email") }),
       React.createElement(Field, { label: t.phone, value: f.phone, onChange: set("phone") }),
       React.createElement(Field, { label: t.destination, value: f.destination, onChange: set("destination") }),
     ),
-    ok && React.createElement("p", { className: "text-green-600 text-sm mt-2" }, "✅ " + t.updateSuccess),
-    React.createElement("button", { onClick: submit, className: "w-full mt-4 bg-red-600 text-white rounded-lg py-2 font-semibold" }, t.save),
-    React.createElement("button", { onClick: onLogout, className: "w-full mt-2 text-sm text-gray-500 underline" }, t.logout)
+    ok && React.createElement("p", { style: { color: "#22c55e", fontSize: "13px", marginTop: "8px" } }, "✅ " + t.updateSuccess),
+    React.createElement("button", { onClick: submit, style: btnPrimary }, t.save),
+    React.createElement("button", { onClick: onLogout, style: btnSecondary }, t.logout)
   );
 }
 
@@ -197,21 +221,27 @@ function TagSimulator({ tagId, lang }) {
 function AdminPanel({ lang, base }) {
   const t = LANG[lang];
   return React.createElement("div", null,
-    React.createElement("p", { className: "text-sm text-gray-500 mb-4" }, t.scanInstruction),
-    React.createElement("div", { className: "grid grid-cols-2 gap-4" },
+    React.createElement("p", { style: { fontSize: "13px", color: "#6b7280", marginBottom: "16px" } }, t.scanInstruction),
+    React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" } },
       ...Array.from({ length: TOTAL_TAGS }, (_, i) => {
         const id = i + 1;
         const url = `${base}?tag=${id}`;
         const saved = loadTag(id);
         const displayName = saved ? saved.name.split(" ")[0] : TAG_NAMES[i];
-        return React.createElement("div", { key: id, className: "border rounded-xl p-3 flex flex-col items-center gap-2 bg-white shadow-sm" },
-          React.createElement("p", { className: "text-xs font-bold text-gray-700" }, displayName),
+        return React.createElement("div", {
+          key: id,
+          style: { border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", background: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }
+        },
+          React.createElement("p", { style: { fontSize: "12px", fontWeight: "700", color: COLOR } }, displayName),
           React.createElement(QRImg, { value: url, size: 100 }),
-          React.createElement("p", { className: "text-xs text-gray-400 text-center break-all" }, url)
+          React.createElement("p", { style: { fontSize: "10px", color: "#9ca3af", textAlign: "center", wordBreak: "break-all" } }, url)
         );
       })
     ),
-    React.createElement("button", { onClick: () => window.print(), className: "w-full mt-6 bg-gray-800 text-white rounded-lg py-2 font-semibold text-sm" }, t.printAll)
+    React.createElement("button", {
+      onClick: () => window.print(),
+      style: { ...btnPrimary, marginTop: "24px", backgroundColor: COLOR_DARK }
+    }, t.printAll)
   );
 }
 
@@ -224,32 +254,45 @@ function App() {
   const [view, setView] = useState(tagId ? "tag" : "admin");
   const t = LANG[lang];
 
-  return React.createElement("div", { className: "min-h-screen bg-gray-50 flex flex-col items-center py-8 px-4" },
-    React.createElement("div", { className: "w-full max-w-sm" },
-      React.createElement("div", { className: "flex items-center justify-between mb-4" },
+  return React.createElement("div", { style: { minHeight: "100vh", backgroundColor: COLOR_LIGHT, display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 16px" } },
+    React.createElement("div", { style: { width: "100%", maxWidth: "360px" } },
+      // Header
+      React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" } },
         React.createElement("div", null,
-          React.createElement("h1", { className: "text-xl font-bold text-gray-800" }, "🏷️ " + t.title),
-          tagId && React.createElement("p", { className: "text-xs text-gray-400" }, TAG_NAMES[tagId - 1])
+          React.createElement("h1", { style: { fontSize: "18px", fontWeight: "700", color: COLOR } }, "🏷️ " + t.title),
+          tagId && React.createElement("p", { style: { fontSize: "11px", color: "#6b7280" } }, TAG_NAMES[tagId - 1])
         ),
-        React.createElement("div", { className: "flex gap-1" },
+        React.createElement("div", { style: { display: "flex", gap: "4px" } },
           ["pt", "en"].map(l => React.createElement("button", {
             key: l, onClick: () => setLang(l),
-            className: `text-xs px-2 py-1 rounded-full border ${lang === l ? "bg-red-600 text-white border-red-600" : "text-gray-400 border-gray-300"}`
+            style: {
+              fontSize: "11px", padding: "3px 8px", borderRadius: "20px", cursor: "pointer",
+              backgroundColor: lang === l ? COLOR : "transparent",
+              color: lang === l ? "white" : "#6b7280",
+              border: `1px solid ${lang === l ? COLOR : "#d1d5db"}`
+            }
           }, l.toUpperCase()))
         )
       ),
-      !tagId && React.createElement("div", { className: "flex gap-2 mb-4" },
+      // Nav
+      !tagId && React.createElement("div", { style: { display: "flex", gap: "8px", marginBottom: "16px" } },
         ["admin", "tag"].map(v => React.createElement("button", {
           key: v, onClick: () => setView(v),
-          className: `flex-1 text-sm py-1.5 rounded-lg border ${view === v ? "bg-red-600 text-white border-red-600" : "text-gray-500 border-gray-300"}`
+          style: {
+            flex: 1, fontSize: "13px", padding: "6px", borderRadius: "8px", cursor: "pointer",
+            backgroundColor: view === v ? COLOR : "transparent",
+            color: view === v ? "white" : "#6b7280",
+            border: `1px solid ${view === v ? COLOR : "#d1d5db"}`
+          }
         }, v === "admin" ? t.adminPanel : `${t.tagId} (demo)`))
       ),
-      React.createElement("div", { className: "bg-white rounded-2xl shadow p-5" },
+      // Card
+      React.createElement("div", { style: { background: "white", borderRadius: "16px", boxShadow: "0 2px 12px rgba(71,72,43,0.1)", padding: "20px" } },
         view === "admin" && !tagId
           ? React.createElement(AdminPanel, { lang, base })
           : React.createElement(TagSimulator, { tagId: tagId || 1, lang })
       ),
-      React.createElement("p", { className: "text-center text-xs text-gray-300 mt-4" }, "Oxygen Hub · Smart Luggage Tag")
+      React.createElement("p", { style: { textAlign: "center", fontSize: "11px", color: "#c4c4a0", marginTop: "16px" } }, "Oxygen Hub · Smart Luggage Tag")
     )
   );
 }

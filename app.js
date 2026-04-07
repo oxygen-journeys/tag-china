@@ -4,24 +4,30 @@ const SUPABASE_URL = "https://sjcxyzndsolowrgtchoi.supabase.co";
 const SUPABASE_KEY = "sb_publishable_hn1uWorMJ3Fqr1FyJmXXQg_TVSKZBX8";
 
 async function dbGet(id) {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/tags?id=eq.${id}&select=*`, {
-    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
-  });
-  const data = await res.json();
-  return data && data.length > 0 ? data[0] : null;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/tags?id=eq.${id}&select=*`, {
+      headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return Array.isArray(data) && data.length > 0 ? data[0] : null;
+  } catch { return null; }
 }
 
 async function dbSave(id, record) {
-  await fetch(`${SUPABASE_URL}/rest/v1/tags`, {
-    method: "POST",
-    headers: {
-      "apikey": SUPABASE_KEY,
-      "Authorization": `Bearer ${SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": "resolution=merge-duplicates"
-    },
-    body: JSON.stringify({ id, ...record })
-  });
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/tags`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({ id, ...record })
+    });
+    return res.ok;
+  } catch { return false; }
 }
 
 const COLOR = "#47482b";
@@ -39,6 +45,7 @@ const LANG = {
     pinMismatch: "Os PINs não coincidem", pinLength: "O PIN deve ter 4 dígitos",
     wrongPin: "PIN incorreto", wrongEmail: "E-mail não encontrado para esta tag",
     fillAll: "Preencha todos os campos", savedSuccess: "Dados salvos com sucesso!",
+    saveError: "Erro ao salvar. Tente novamente.",
     tagId: "Tag", adminPanel: "Painel Admin — QR Codes", printAll: "Imprimir todos",
     scanInstruction: "Cada QR Code é único por pessoa",
     notRegistered: "Esta tag ainda não foi cadastrada.",
@@ -55,6 +62,7 @@ const LANG = {
     pinMismatch: "PINs don't match", pinLength: "PIN must be 4 digits",
     wrongPin: "Incorrect PIN", wrongEmail: "E-mail not found for this tag",
     fillAll: "Please fill all fields", savedSuccess: "Info saved successfully!",
+    saveError: "Error saving. Please try again.",
     tagId: "Tag", adminPanel: "Admin Panel — QR Codes", printAll: "Print all",
     scanInstruction: "Each QR Code is unique per person",
     notRegistered: "This tag hasn't been registered yet.",
@@ -79,8 +87,8 @@ const QRImg = ({ value, size = 100 }) =>
 
 const inpStyle = {
   width: "100%", border: "1px solid #d1d5db", borderRadius: "8px",
-  padding: "8px 12px", fontSize: "14px", outline: "none", boxSizing: "border-box",
-  backgroundColor: "white"
+  padding: "8px 12px", fontSize: "14px", outline: "none",
+  boxSizing: "border-box", backgroundColor: "white"
 };
 const btnPrimary = {
   width: "100%", marginTop: "16px", backgroundColor: COLOR,
@@ -98,6 +106,12 @@ function Field({ label, value, onChange, type = "text", maxLength }) {
     style: inpStyle, placeholder: label, value, type,
     maxLength, onChange: e => onChange(e.target.value)
   });
+}
+
+function Spinner() {
+  return React.createElement("div", {
+    style: { textAlign: "center", padding: "40px 0", color: "#6b7280", fontSize: "14px" }
+  }, "⏳ Carregando...");
 }
 
 function PublicView({ tag, lang, onOwnerClick }) {
@@ -139,8 +153,10 @@ function RegisterView({ tagId, lang, onSaved, onBack }) {
     if (f.pin.length !== 4) return setErr(t.pinLength);
     if (f.pin !== f.confirmPin) return setErr(t.pinMismatch);
     setLoading(true);
-    await dbSave(tagId, { name: f.name, email: f.email, phone: f.phone, destination: f.destination, pin: f.pin });
-    setLoading(false); setOk(true);
+    const saved = await dbSave(tagId, { name: f.name, email: f.email, phone: f.phone, destination: f.destination, pin: f.pin });
+    setLoading(false);
+    if (!saved) return setErr(t.saveError);
+    setOk(true);
     setTimeout(onSaved, 1200);
   }
 
@@ -194,12 +210,15 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
   const t = LANG[lang];
   const [f, setF] = useState({ name: tag.name, email: tag.email, phone: tag.phone, destination: tag.destination });
   const [ok, setOk] = useState(false); const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
   const set = k => v => setF(p => ({ ...p, [k]: v }));
 
   async function submit() {
     setLoading(true);
-    await dbSave(tagId, { ...f, pin: tag.pin });
-    setLoading(false); setOk(true);
+    const saved = await dbSave(tagId, { ...f, pin: tag.pin });
+    setLoading(false);
+    if (!saved) return setErr(t.saveError);
+    setOk(true);
     setTimeout(() => onSaved({ ...f, pin: tag.pin }), 1000);
   }
 
@@ -211,6 +230,7 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
       React.createElement(Field, { label: t.phone, value: f.phone, onChange: set("phone") }),
       React.createElement(Field, { label: t.destination, value: f.destination, onChange: set("destination") }),
     ),
+    err && React.createElement("p", { style: { color: "#ef4444", fontSize: "13px", marginTop: "8px" } }, err),
     ok && React.createElement("p", { style: { color: "#22c55e", fontSize: "13px", marginTop: "8px" } }, "✅ " + t.updateSuccess),
     React.createElement("button", { onClick: submit, style: { ...btnPrimary, opacity: loading ? 0.7 : 1 } }, loading ? t.loading : t.save),
     React.createElement("button", { onClick: onLogout, style: btnSecondary }, t.logout)
@@ -220,13 +240,16 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
 function TagSimulator({ tagId, lang }) {
   const [view, setView] = useState("loading");
   const [tagData, setTagData] = useState(null);
-  const t = LANG[lang];
 
   useEffect(() => {
-    dbGet(tagId).then(d => { setTagData(d); setView("public"); });
+    setView("loading");
+    dbGet(tagId).then(d => {
+      setTagData(d);
+      setView("public");
+    });
   }, [tagId]);
 
-  if (view === "loading") return React.createElement("div", { style: { textAlign: "center", padding: "40px 0", color: "#6b7280" } }, t.loading);
+  if (view === "loading") return React.createElement(Spinner);
   if (view === "public") return React.createElement(PublicView, { tag: tagData, lang, onOwnerClick: () => setView(tagData ? "login" : "register") });
   if (view === "register") return React.createElement(RegisterView, { tagId, lang, onBack: () => setView("public"), onSaved: () => { dbGet(tagId).then(d => { setTagData(d); setView("public"); }); } });
   if (view === "login") return React.createElement(LoginView, { tagId, lang, onBack: () => setView("public"), onRegister: () => setView("register"), onLoggedIn: d => { setTagData(d); setView("edit"); } });
@@ -294,6 +317,7 @@ function App() {
       !tagId && React.createElement("div", { style: { display: "flex", gap: "8px", marginBottom: "16px" } },
         ["admin", "tag"].map(v => React.createElement("button", {
           key: v, onClick: () => setView(v),
+          className: "",
           style: {
             flex: 1, fontSize: "13px", padding: "6px", borderRadius: "8px", cursor: "pointer",
             backgroundColor: view === v ? COLOR : "transparent",

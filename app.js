@@ -1,47 +1,65 @@
-const { useState } = React;
+const { useState, useEffect } = React;
+
+const SUPABASE_URL = "https://sjcxyzndsolowrgtchoi.supabase.co";
+const SUPABASE_KEY = "sb_publishable_hn1uWorMJ3Fqr1FyJmXXQg_TVSKZBX8";
+
+async function dbGet(id) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/tags?id=eq.${id}&select=*`, {
+    headers: { "apikey": SUPABASE_KEY, "Authorization": `Bearer ${SUPABASE_KEY}` }
+  });
+  const data = await res.json();
+  return data && data.length > 0 ? data[0] : null;
+}
+
+async function dbSave(id, record) {
+  await fetch(`${SUPABASE_URL}/rest/v1/tags`, {
+    method: "POST",
+    headers: {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "resolution=merge-duplicates"
+    },
+    body: JSON.stringify({ id, ...record })
+  });
+}
 
 const COLOR = "#47482b";
 const COLOR_DARK = "#33341f";
-const COLOR_LIGHT = "#c49d57";
+const COLOR_BG = "#c49d57";
 
 const LANG = {
   pt: {
-    title: "Tag de Mala", subtitle: "Escaneie para ver informações de contato",
-    name: "Nome completo", email: "E-mail", phone: "WhatsApp / Telefone", destination: "Endereço",
+    title: "Tag de Mala", name: "Nome completo", email: "E-mail",
+    phone: "WhatsApp / Telefone", destination: "Endereço",
     pin: "PIN (4 dígitos)", confirmPin: "Confirmar PIN",
-    save: "Salvar", edit: "Editar meus dados", logout: "Sair",
-    login: "Entrar para editar", loginBtn: "Entrar",
-    firstAccess: "Primeiro acesso? Cadastre seus dados",
-    register: "Cadastrar", back: "Voltar",
-    contact: "Informações de contato", foundBag: "Encontrou esta mala? Entre em contato:",
-    ownerArea: "Área do proprietário", pinMismatch: "Os PINs não coincidem",
-    pinLength: "O PIN deve ter 4 dígitos", wrongPin: "PIN incorreto",
-    wrongEmail: "E-mail não encontrado para esta tag", fillAll: "Preencha todos os campos",
-    savedSuccess: "Dados salvos com sucesso!", tagId: "Tag",
-    adminPanel: "Painel Admin — QR Codes", printAll: "Imprimir todos",
+    save: "Salvar", logout: "Sair", login: "Entrar para editar", loginBtn: "Entrar",
+    firstAccess: "Primeiro acesso? Cadastre seus dados", register: "Cadastrar", back: "Voltar",
+    foundBag: "Encontrou esta mala? Entre em contato:", ownerArea: "Área do proprietário",
+    pinMismatch: "Os PINs não coincidem", pinLength: "O PIN deve ter 4 dígitos",
+    wrongPin: "PIN incorreto", wrongEmail: "E-mail não encontrado para esta tag",
+    fillAll: "Preencha todos os campos", savedSuccess: "Dados salvos com sucesso!",
+    tagId: "Tag", adminPanel: "Painel Admin — QR Codes", printAll: "Imprimir todos",
     scanInstruction: "Cada QR Code é único por pessoa",
     notRegistered: "Esta tag ainda não foi cadastrada.",
     pinInfo: "O PIN protege seus dados. Guarde-o bem.",
-    editData: "Editar dados", updateSuccess: "Dados atualizados!",
+    editData: "Editar dados", updateSuccess: "Dados atualizados!", loading: "Carregando...",
   },
   en: {
-    title: "Luggage Tag", subtitle: "Scan to see contact information",
-    name: "Full name", email: "E-mail", phone: "WhatsApp / Phone", destination: "Address",
+    title: "Luggage Tag", name: "Full name", email: "E-mail",
+    phone: "WhatsApp / Phone", destination: "Address",
     pin: "PIN (4 digits)", confirmPin: "Confirm PIN",
-    save: "Save", edit: "Edit my info", logout: "Log out",
-    login: "Log in to edit", loginBtn: "Log in",
-    firstAccess: "First time? Register your info",
-    register: "Register", back: "Back",
-    contact: "Contact information", foundBag: "Found this bag? Get in touch:",
-    ownerArea: "Owner area", pinMismatch: "PINs don't match",
-    pinLength: "PIN must be 4 digits", wrongPin: "Incorrect PIN",
-    wrongEmail: "E-mail not found for this tag", fillAll: "Please fill all fields",
-    savedSuccess: "Info saved successfully!", tagId: "Tag",
-    adminPanel: "Admin Panel — QR Codes", printAll: "Print all",
+    save: "Save", logout: "Log out", login: "Log in to edit", loginBtn: "Log in",
+    firstAccess: "First time? Register your info", register: "Register", back: "Back",
+    foundBag: "Found this bag? Get in touch:", ownerArea: "Owner area",
+    pinMismatch: "PINs don't match", pinLength: "PIN must be 4 digits",
+    wrongPin: "Incorrect PIN", wrongEmail: "E-mail not found for this tag",
+    fillAll: "Please fill all fields", savedSuccess: "Info saved successfully!",
+    tagId: "Tag", adminPanel: "Admin Panel — QR Codes", printAll: "Print all",
     scanInstruction: "Each QR Code is unique per person",
     notRegistered: "This tag hasn't been registered yet.",
     pinInfo: "Your PIN protects your data. Keep it safe.",
-    editData: "Edit info", updateSuccess: "Info updated!",
+    editData: "Edit info", updateSuccess: "Info updated!", loading: "Loading...",
   }
 };
 
@@ -53,17 +71,7 @@ const TAG_NAMES = [
   "Marcelo", "Wallace", "Joana", "Reserva 1", "Reserva 2"
 ];
 
-const storageKey = id => `luggage_tag_${id}`;
-
-function loadTag(id) {
-  try { const v = localStorage.getItem(storageKey(id)); return v ? JSON.parse(v) : null; }
-  catch { return null; }
-}
-function saveTag(id, data) {
-  localStorage.setItem(storageKey(id), JSON.stringify(data));
-}
-
-const QRImg = ({ value, size = 120 }) =>
+const QRImg = ({ value, size = 100 }) =>
   React.createElement("img", {
     src: `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(value)}&color=47482b`,
     alt: "QR Code", width: size, height: size
@@ -71,16 +79,9 @@ const QRImg = ({ value, size = 120 }) =>
 
 const inpStyle = {
   width: "100%", border: "1px solid #d1d5db", borderRadius: "8px",
-  padding: "8px 12px", fontSize: "14px", outline: "none", boxSizing: "border-box"
+  padding: "8px 12px", fontSize: "14px", outline: "none", boxSizing: "border-box",
+  backgroundColor: "white"
 };
-
-function Field({ label, value, onChange, type = "text", maxLength }) {
-  return React.createElement("input", {
-    style: inpStyle, placeholder: label, value, type,
-    maxLength, onChange: e => onChange(e.target.value)
-  });
-}
-
 const btnPrimary = {
   width: "100%", marginTop: "16px", backgroundColor: COLOR,
   color: "white", borderRadius: "8px", padding: "10px", fontWeight: "600",
@@ -91,6 +92,13 @@ const btnSecondary = {
   border: "none", cursor: "pointer", fontSize: "13px",
   color: "#6b7280", textDecoration: "underline"
 };
+
+function Field({ label, value, onChange, type = "text", maxLength }) {
+  return React.createElement("input", {
+    style: inpStyle, placeholder: label, value, type,
+    maxLength, onChange: e => onChange(e.target.value)
+  });
+}
 
 function PublicView({ tag, lang, onOwnerClick }) {
   const t = LANG[lang];
@@ -122,17 +130,17 @@ function PublicView({ tag, lang, onOwnerClick }) {
 function RegisterView({ tagId, lang, onSaved, onBack }) {
   const t = LANG[lang];
   const [f, setF] = useState({ name: "", email: "", phone: "", destination: "", pin: "", confirmPin: "" });
-  const [err, setErr] = useState("");
-  const [ok, setOk] = useState(false);
+  const [err, setErr] = useState(""); const [ok, setOk] = useState(false); const [loading, setLoading] = useState(false);
   const set = k => v => setF(p => ({ ...p, [k]: v }));
 
-  function submit() {
+  async function submit() {
     setErr("");
     if (!f.name || !f.email || !f.phone || !f.destination || !f.pin) return setErr(t.fillAll);
     if (f.pin.length !== 4) return setErr(t.pinLength);
     if (f.pin !== f.confirmPin) return setErr(t.pinMismatch);
-    saveTag(tagId, { name: f.name, email: f.email, phone: f.phone, destination: f.destination, pin: f.pin });
-    setOk(true);
+    setLoading(true);
+    await dbSave(tagId, { name: f.name, email: f.email, phone: f.phone, destination: f.destination, pin: f.pin });
+    setLoading(false); setOk(true);
     setTimeout(onSaved, 1200);
   }
 
@@ -150,19 +158,19 @@ function RegisterView({ tagId, lang, onSaved, onBack }) {
     ),
     err && React.createElement("p", { style: { color: "#ef4444", fontSize: "13px", marginTop: "8px" } }, err),
     ok && React.createElement("p", { style: { color: "#22c55e", fontSize: "13px", marginTop: "8px" } }, "✅ " + t.savedSuccess),
-    React.createElement("button", { onClick: submit, style: btnPrimary }, t.register)
+    React.createElement("button", { onClick: submit, style: { ...btnPrimary, opacity: loading ? 0.7 : 1 } }, loading ? t.loading : t.register)
   );
 }
 
 function LoginView({ tagId, lang, onLoggedIn, onBack, onRegister }) {
   const t = LANG[lang];
-  const [email, setEmail] = useState("");
-  const [pin, setPin] = useState("");
-  const [err, setErr] = useState("");
+  const [email, setEmail] = useState(""); const [pin, setPin] = useState("");
+  const [err, setErr] = useState(""); const [loading, setLoading] = useState(false);
 
-  function submit() {
-    setErr("");
-    const tag = loadTag(tagId);
+  async function submit() {
+    setErr(""); setLoading(true);
+    const tag = await dbGet(tagId);
+    setLoading(false);
     if (!tag) return setErr(t.notRegistered);
     if (tag.email.toLowerCase() !== email.toLowerCase()) return setErr(t.wrongEmail);
     if (tag.pin !== pin) return setErr(t.wrongPin);
@@ -177,7 +185,7 @@ function LoginView({ tagId, lang, onLoggedIn, onBack, onRegister }) {
       React.createElement(Field, { label: t.pin, value: pin, onChange: setPin, type: "password", maxLength: 4 }),
     ),
     err && React.createElement("p", { style: { color: "#ef4444", fontSize: "13px", marginTop: "8px" } }, err),
-    React.createElement("button", { onClick: submit, style: btnPrimary }, t.loginBtn),
+    React.createElement("button", { onClick: submit, style: { ...btnPrimary, opacity: loading ? 0.7 : 1 } }, loading ? t.loading : t.loginBtn),
     React.createElement("button", { onClick: onRegister, style: btnSecondary }, t.firstAccess)
   );
 }
@@ -185,12 +193,13 @@ function LoginView({ tagId, lang, onLoggedIn, onBack, onRegister }) {
 function EditView({ tagId, lang, tag, onSaved, onLogout }) {
   const t = LANG[lang];
   const [f, setF] = useState({ name: tag.name, email: tag.email, phone: tag.phone, destination: tag.destination });
-  const [ok, setOk] = useState(false);
+  const [ok, setOk] = useState(false); const [loading, setLoading] = useState(false);
   const set = k => v => setF(p => ({ ...p, [k]: v }));
 
-  function submit() {
-    saveTag(tagId, { ...f, pin: tag.pin });
-    setOk(true);
+  async function submit() {
+    setLoading(true);
+    await dbSave(tagId, { ...f, pin: tag.pin });
+    setLoading(false); setOk(true);
     setTimeout(() => onSaved({ ...f, pin: tag.pin }), 1000);
   }
 
@@ -203,45 +212,54 @@ function EditView({ tagId, lang, tag, onSaved, onLogout }) {
       React.createElement(Field, { label: t.destination, value: f.destination, onChange: set("destination") }),
     ),
     ok && React.createElement("p", { style: { color: "#22c55e", fontSize: "13px", marginTop: "8px" } }, "✅ " + t.updateSuccess),
-    React.createElement("button", { onClick: submit, style: btnPrimary }, t.save),
+    React.createElement("button", { onClick: submit, style: { ...btnPrimary, opacity: loading ? 0.7 : 1 } }, loading ? t.loading : t.save),
     React.createElement("button", { onClick: onLogout, style: btnSecondary }, t.logout)
   );
 }
 
 function TagSimulator({ tagId, lang }) {
-  const [view, setView] = useState("public");
-  const [tagData, setTagData] = useState(() => loadTag(tagId));
+  const [view, setView] = useState("loading");
+  const [tagData, setTagData] = useState(null);
+  const t = LANG[lang];
 
+  useEffect(() => {
+    dbGet(tagId).then(d => { setTagData(d); setView("public"); });
+  }, [tagId]);
+
+  if (view === "loading") return React.createElement("div", { style: { textAlign: "center", padding: "40px 0", color: "#6b7280" } }, t.loading);
   if (view === "public") return React.createElement(PublicView, { tag: tagData, lang, onOwnerClick: () => setView(tagData ? "login" : "register") });
-  if (view === "register") return React.createElement(RegisterView, { tagId, lang, onBack: () => setView("public"), onSaved: () => { setTagData(loadTag(tagId)); setView("public"); } });
+  if (view === "register") return React.createElement(RegisterView, { tagId, lang, onBack: () => setView("public"), onSaved: () => { dbGet(tagId).then(d => { setTagData(d); setView("public"); }); } });
   if (view === "login") return React.createElement(LoginView, { tagId, lang, onBack: () => setView("public"), onRegister: () => setView("register"), onLoggedIn: d => { setTagData(d); setView("edit"); } });
   if (view === "edit") return React.createElement(EditView, { tagId, lang, tag: tagData, onLogout: () => setView("public"), onSaved: d => { setTagData(d); setView("public"); } });
 }
 
 function AdminPanel({ lang, base }) {
   const t = LANG[lang];
+  const [names, setNames] = useState(TAG_NAMES.slice());
+
+  useEffect(() => {
+    Promise.all(Array.from({ length: TOTAL_TAGS }, (_, i) => dbGet(i + 1))).then(results => {
+      setNames(results.map((d, i) => d ? d.name.split(" ")[0] : TAG_NAMES[i]));
+    });
+  }, []);
+
   return React.createElement("div", null,
     React.createElement("p", { style: { fontSize: "13px", color: "#6b7280", marginBottom: "16px" } }, t.scanInstruction),
     React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" } },
       ...Array.from({ length: TOTAL_TAGS }, (_, i) => {
         const id = i + 1;
         const url = `${base}?tag=${id}`;
-        const saved = loadTag(id);
-        const displayName = saved ? saved.name.split(" ")[0] : TAG_NAMES[i];
         return React.createElement("div", {
           key: id,
           style: { border: "1px solid #e5e7eb", borderRadius: "12px", padding: "12px", display: "flex", flexDirection: "column", alignItems: "center", gap: "8px", background: "white", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }
         },
-          React.createElement("p", { style: { fontSize: "12px", fontWeight: "700", color: COLOR } }, displayName),
+          React.createElement("p", { style: { fontSize: "12px", fontWeight: "700", color: COLOR } }, names[i]),
           React.createElement(QRImg, { value: url, size: 100 }),
           React.createElement("p", { style: { fontSize: "10px", color: "#9ca3af", textAlign: "center", wordBreak: "break-all" } }, url)
         );
       })
     ),
-    React.createElement("button", {
-      onClick: () => window.print(),
-      style: { ...btnPrimary, marginTop: "24px", backgroundColor: COLOR_DARK }
-    }, t.printAll)
+    React.createElement("button", { onClick: () => window.print(), style: { ...btnPrimary, marginTop: "24px", backgroundColor: COLOR_DARK } }, t.printAll)
   );
 }
 
@@ -254,13 +272,12 @@ function App() {
   const [view, setView] = useState(tagId ? "tag" : "admin");
   const t = LANG[lang];
 
-  return React.createElement("div", { style: { minHeight: "100vh", backgroundColor: COLOR_LIGHT, display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 16px" } },
+  return React.createElement("div", { style: { minHeight: "100vh", backgroundColor: COLOR_BG, display: "flex", flexDirection: "column", alignItems: "center", padding: "32px 16px" } },
     React.createElement("div", { style: { width: "100%", maxWidth: "360px" } },
-      // Header
       React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" } },
         React.createElement("div", null,
-          React.createElement("h1", { style: { fontSize: "18px", fontWeight: "700", color: COLOR } }, "🏷️ " + t.title),
-          tagId && React.createElement("p", { style: { fontSize: "11px", color: "#6b7280" } }, TAG_NAMES[tagId - 1])
+          React.createElement("h1", { style: { fontSize: "18px", fontWeight: "700", color: COLOR_DARK } }, "🏷️ " + t.title),
+          tagId && React.createElement("p", { style: { fontSize: "11px", color: COLOR_DARK, opacity: 0.7 } }, TAG_NAMES[tagId - 1])
         ),
         React.createElement("div", { style: { display: "flex", gap: "4px" } },
           ["pt", "en"].map(l => React.createElement("button", {
@@ -268,31 +285,29 @@ function App() {
             style: {
               fontSize: "11px", padding: "3px 8px", borderRadius: "20px", cursor: "pointer",
               backgroundColor: lang === l ? COLOR : "transparent",
-              color: lang === l ? "white" : "#6b7280",
-              border: `1px solid ${lang === l ? COLOR : "#d1d5db"}`
+              color: lang === l ? "white" : COLOR_DARK,
+              border: `1px solid ${lang === l ? COLOR : COLOR_DARK}`
             }
           }, l.toUpperCase()))
         )
       ),
-      // Nav
       !tagId && React.createElement("div", { style: { display: "flex", gap: "8px", marginBottom: "16px" } },
         ["admin", "tag"].map(v => React.createElement("button", {
           key: v, onClick: () => setView(v),
           style: {
             flex: 1, fontSize: "13px", padding: "6px", borderRadius: "8px", cursor: "pointer",
             backgroundColor: view === v ? COLOR : "transparent",
-            color: view === v ? "white" : "#6b7280",
-            border: `1px solid ${view === v ? COLOR : "#d1d5db"}`
+            color: view === v ? "white" : COLOR_DARK,
+            border: `1px solid ${view === v ? COLOR : COLOR_DARK}`
           }
         }, v === "admin" ? t.adminPanel : `${t.tagId} (demo)`))
       ),
-      // Card
-      React.createElement("div", { style: { background: "white", borderRadius: "16px", boxShadow: "0 2px 12px rgba(71,72,43,0.1)", padding: "20px" } },
+      React.createElement("div", { style: { background: "white", borderRadius: "16px", boxShadow: "0 2px 12px rgba(71,72,43,0.15)", padding: "20px" } },
         view === "admin" && !tagId
           ? React.createElement(AdminPanel, { lang, base })
           : React.createElement(TagSimulator, { tagId: tagId || 1, lang })
       ),
-      React.createElement("p", { style: { textAlign: "center", fontSize: "11px", color: "#c4c4a0", marginTop: "16px" } }, "Oxygen Hub · Smart Luggage Tag")
+      React.createElement("p", { style: { textAlign: "center", fontSize: "11px", color: COLOR_DARK, opacity: 0.5, marginTop: "16px" } }, "Oxygen Hub · Smart Luggage Tag")
     )
   );
 }
